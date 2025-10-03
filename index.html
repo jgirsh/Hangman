@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Classroom Hangman</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Classroom Hangman</h1>
+      <nav class="mode-switch" role="tablist" aria-label="Mode switch">
+        <button id="tab-teacher" class="tab active" role="tab" aria-selected="true" aria-controls="panel-teacher">Teacher</button>
+        <button id="tab-student" class="tab" role="tab" aria-selected="false" aria-controls="panel-student">Student</button>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section id="panel-teacher" class="panel" role="tabpanel" aria-labelledby="tab-teacher">
+        <h2>Teacher: Manage Spelling Words</h2>
+        <p>Enter words separated by commas or new lines. Non-letters will be removed. Words are stored on this device.</p>
+        <div class="teacher-controls">
+          <textarea id="words-input" rows="6" placeholder="cat, dog, school\nmath\nscience"></textarea>
+          <div class="teacher-buttons">
+            <button id="add-words-btn" class="primary">Add Words</button>
+            <button id="clear-words-btn" class="danger">Clear All</button>
+          </div>
+        </div>
+        <div class="word-list">
+          <div class="word-list-header">
+            <h3>Saved Words <span id="word-count" aria-live="polite"></span></h3>
+            <div class="import-export">
+              <button id="export-btn">Export</button>
+              <label class="import-label">
+                <input id="import-file" type="file" accept=".txt,.csv" hidden>
+                <span role="button" tabindex="0">Import</span>
+              </label>
+            </div>
+          </div>
+          <ul id="word-list-ul" class="list"></ul>
+        </div>
+      </section>
+
+      <section id="panel-student" class="panel hidden" role="tabpanel" aria-labelledby="tab-student">
+        <h2>Student: Play Hangman</h2>
+        <div class="game-layout">
+          <div class="hangman-area">
+            <svg id="hangman-svg" viewBox="0 0 200 250" aria-hidden="true">
+              <!-- Gallows -->
+              <line x1="10" y1="240" x2="190" y2="240" class="gallow"/>
+              <line x1="50" y1="240" x2="50" y2="20" class="gallow"/>
+              <line x1="47" y1="20" x2="130" y2="20" class="gallow"/>
+              <line x1="130" y1="20" x2="130" y2="50" class="gallow"/>
+              <!-- Parts (6) -->
+              <circle id="part-head" cx="130" cy="70" r="20" class="part hidden"/>
+              <line id="part-body" x1="130" y1="90" x2="130" y2="150" class="part hidden"/>
+              <line id="part-arm-left" x1="130" y1="110" x2="100" y2="130" class="part hidden"/>
+              <line id="part-arm-right" x1="130" y1="110" x2="160" y2="130" class="part hidden"/>
+              <line id="part-leg-left" x1="130" y1="150" x2="110" y2="190" class="part hidden"/>
+              <line id="part-leg-right" x1="130" y1="150" x2="150" y2="190" class="part hidden"/>
+            </svg>
+          </div>
+          <div class="game-area">
+            <div class="status-row">
+              <div id="message" class="message" aria-live="polite"></div>
+              <div class="guesses">Wrong: <span id="wrong-count">0</span>/6</div>
+              <div class="score">Score: <span id="score">0</span></div>
+            </div>
+            <div id="masked-word" class="masked-word" aria-label="Word"></div>
+            <div class="letters">
+              <div class="letters-header">
+                <h3>Incorrect Letters</h3>
+              </div>
+              <div id="incorrect-letters" class="incorrect-letters" aria-live="polite"></div>
+            </div>
+            <div id="keyboard" class="keyboard" aria-label="On-screen keyboard"></div>
+            <div class="game-buttons">
+              <button id="start-btn" class="primary">Start</button>
+              <button id="next-btn" disabled>Next Word</button>
+              <button id="reset-round-btn">Reset Round</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <small>Words are saved locally. Best in fullscreen on a projector.</small>
+    </footer>
+
+    <script src="./app.js" defer></script>
+  </body>
+  </html>
+
+
