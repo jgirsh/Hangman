@@ -25,7 +25,6 @@ const startBtn = document.getElementById('start-btn');
 const nextBtn = document.getElementById('next-btn');
 const resetRoundBtn = document.getElementById('reset-round-btn');
 const messageEl = document.getElementById('message');
-const scoreEl = document.getElementById('score');
 
 // Hangman parts order (6)
 const parts = [
@@ -44,7 +43,6 @@ let revealed = [];
 let wrongLetters = new Set();
 let correctLetters = new Set();
 let usedWordIndices = new Set();
-let score = 0;
 
 function saveWordsToStorage() {
   try { localStorage.setItem(STORAGE_KEY_WORDS, JSON.stringify(words)); } catch {}
@@ -179,8 +177,6 @@ function handleGuess(letter) {
     }
     updateMaskedWord();
     if (revealed.join('') === currentWord.toUpperCase()) {
-      score += 10;
-      if (scoreEl) scoreEl.textContent = String(score);
       messageEl.textContent = 'Great job! You found the word!';
       nextBtn.disabled = false;
     } else {
@@ -251,11 +247,7 @@ importFile.addEventListener('change', async (e) => {
   importFile.value = '';
 });
 
-startBtn.addEventListener('click', () => {
-  score = 0;
-  if (scoreEl) scoreEl.textContent = '0';
-  startRound();
-});
+startBtn.addEventListener('click', () => startRound());
 nextBtn.addEventListener('click', () => startRound());
 resetRoundBtn.addEventListener('click', () => {
   if (!currentWord) return;
