@@ -259,6 +259,98 @@ button {
     display: none;
 }
 
+/* Win overlay */
+.win-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.win-card {
+    position: relative;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 40px 30px;
+    max-width: 520px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+    overflow: hidden;
+}
+
+.win-title {
+    font-size: 2.6em;
+    margin-bottom: 10px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    text-shadow: 0 3px 8px rgba(0,0,0,0.35), 0 0 2px rgba(255,255,255,0.3);
+}
+
+.win-subtitle {
+    font-size: 1.2em;
+    margin-bottom: 18px;
+    opacity: 0.95;
+}
+
+.win-score {
+    font-size: 1.4em;
+    font-weight: 800;
+    background: rgba(0,0,0,0.15);
+    border: 2px solid rgba(255,255,255,0.25);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 0 auto 20px;
+    display: inline-block;
+}
+
+.win-card .new-game-btn {
+    background: #ffc107;
+    color: #212529;
+}
+.win-card .new-game-btn:hover {
+    background: #e0a800;
+    transform: translateY(-2px);
+}
+
+/* Confetti animation */
+.confetti {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+.confetti span {
+    position: absolute;
+    top: -10%;
+    width: 10px;
+    height: 14px;
+    background: #ffd166;
+    opacity: 0.9;
+    transform: rotate(15deg);
+    animation: confetti-fall 2.5s linear infinite;
+    border-radius: 2px;
+}
+.confetti span:nth-child(2) { left: 15%; background: #ef476f; animation-delay: 0.2s; }
+.confetti span:nth-child(3) { left: 30%; background: #06d6a0; animation-delay: 0.4s; }
+.confetti span:nth-child(4) { left: 45%; background: #118ab2; animation-delay: 0.6s; }
+.confetti span:nth-child(5) { left: 60%; background: #ffd166; animation-delay: 0.8s; }
+.confetti span:nth-child(6) { left: 75%; background: #ef476f; animation-delay: 1.0s; }
+.confetti span:nth-child(7) { left: 90%; background: #06d6a0; animation-delay: 1.2s; }
+.confetti span:nth-child(8) { left: 5%; background: #118ab2; animation-delay: 1.4s; }
+.confetti span:nth-child(9) { left: 52%; background: #ffd166; animation-delay: 1.6s; }
+.confetti span:nth-child(10){ left: 82%; background:#ef476f; animation-delay: 1.8s; }
+
+@keyframes confetti-fall {
+    0% { transform: translateY(-20%) rotate(0deg); }
+    100% { transform: translateY(120vh) rotate(360deg); }
+}
+
 .guess-section {
     background: #f8f9fa;
     padding: 20px;
