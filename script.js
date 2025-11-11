@@ -28,6 +28,11 @@ class HangmanGame {
         this.saveWordsBtn = document.getElementById('saveWordsBtn');
         this.goToStudentBtn = document.getElementById('goToStudentBtn');
         this.saveStatus = document.getElementById('saveStatus');
+        // Win overlay elements
+        this.winOverlay = document.getElementById('winOverlay');
+        this.winScore = document.getElementById('winScore');
+        this.winSubtitle = document.getElementById('winSubtitle');
+        this.winNewGameBtn = document.getElementById('winNewGameBtn');
         
         // Student page elements
         this.studentGameTitle = document.getElementById('studentGameTitle');
@@ -80,6 +85,10 @@ class HangmanGame {
         this.nextWordBtn && this.nextWordBtn.addEventListener('click', () => this.nextWord());
         this.newGameBtn && this.newGameBtn.addEventListener('click', () => this.startNewGame());
         this.backToTeacherBtn && this.backToTeacherBtn.addEventListener('click', () => this.goToTeacherPage());
+        this.winNewGameBtn && this.winNewGameBtn.addEventListener('click', () => {
+            this.hideWinOverlay();
+            this.startNewGame();
+        });
 
         // Resilient global delegation as a safety net
         document.addEventListener('click', (e) => {
@@ -124,6 +133,23 @@ class HangmanGame {
             localStorage.setItem('hangmanWords', JSON.stringify(this.words));
             this.wordInput.value = '';
         }
+    }
+    
+    getRandomEncouragement() {
+        const phrases = [
+            'Excellent!',
+            'Well done!',
+            'Awesome!',
+            'Fantastic!',
+            'Great work!',
+            'Impressive!',
+            'Nice job!',
+            'Brilliant!',
+            'Superb!',
+            'Outstanding!'
+        ];
+        const idx = Math.floor(Math.random() * phrases.length);
+        return phrases[idx];
     }
     
     updateWordsList() {
@@ -221,6 +247,7 @@ class HangmanGame {
         this.gameStarted = true;
         this.currentWordIndex = 0;
         this.score = 0;
+        this.correctWordsCount = 0;
         this.scoreElement.textContent = this.score;
         this.startGameBtn.style.display = 'none';
         this.toggleStudentInterface(true);
@@ -254,10 +281,10 @@ class HangmanGame {
         const letter = this.letterInput.value.toLowerCase().trim();
         this.letterInput.value = '';
         
-        if (!letter || letter.length !== 1) {
-            alert('Please enter a single letter.');
-            return;
-        }
+        // Only show alert if the user entered multiple characters.
+        // Ignore empty submissions silently.
+        if (letter.length === 0) return;
+        if (letter.length > 1) { alert('Please enter a single letter.'); return; }
         
         if (this.guessedLetters.includes(letter) || this.incorrectLetters.includes(letter)) {
             alert('You already guessed this letter.');
@@ -333,8 +360,10 @@ class HangmanGame {
     
     wordGuessed() {
         this.score += 10;
+        this.correctWordsCount = (this.correctWordsCount || 0) + 1;
         this.scoreElement.textContent = this.score;
-        this.gameMessage.textContent = `Congratulations! You guessed the word "${this.currentWord.toUpperCase()}" and you got +10 points!`;
+        const cheer = this.getRandomEncouragement();
+        this.gameMessage.textContent = `Congratulations! You guessed the word "${this.currentWord.toUpperCase()}" and you got +10 points! ${cheer}`;
         // If this was the last word, end game instead of showing Next Word
         if (this.currentWordIndex + 1 >= this.words.length) {
             this.currentWordIndex++;
@@ -358,9 +387,22 @@ class HangmanGame {
     }
     
     endGame() {
-        this.gameMessage.innerHTML = `<span class="final-message">Game Complete! Final Score: ${this.score} points</span>`;
-        this.newGameBtn.style.display = 'inline-block';
-        this.nextWordBtn.style.display = 'none';
+        const allGuessed = this.words.length > 0 && (this.correctWordsCount || 0) === this.words.length;
+        if (allGuessed && this.winOverlay && this.winScore) {
+            const cheer = this.getRandomEncouragement();
+            this.winScore.textContent = `Game Complete! Final Score: ${this.score} points`;
+            if (this.winSubtitle) this.winSubtitle.textContent = cheer;
+            this.winOverlay.style.display = 'flex';
+            this.winOverlay.setAttribute('aria-hidden', 'false');
+            // Hide in-page final controls when using overlay
+            this.newGameBtn.style.display = 'none';
+            this.nextWordBtn.style.display = 'none';
+        } else {
+            const cheer = this.getRandomEncouragement();
+            this.gameMessage.innerHTML = `<span class="final-message">Game Complete! Final Score: ${this.score} points — ${cheer}</span>`;
+            this.newGameBtn.style.display = 'inline-block';
+            this.nextWordBtn.style.display = 'none';
+        }
     }
     
     startNewGame() {
@@ -376,6 +418,7 @@ class HangmanGame {
         this.wrongGuesses = 0;
         this.score = 0;
         this.currentWordIndex = 0;
+        this.correctWordsCount = 0;
         
         this.wordDisplay.textContent = '';
         this.gameMessage.textContent = 'Click Start to play!';
@@ -388,6 +431,7 @@ class HangmanGame {
         this.newGameBtn.style.display = 'none';
         
         this.resetHangman();
+        this.hideWinOverlay();
     }
 
     refreshWordsLeftFromStorage() {
@@ -406,6 +450,12 @@ class HangmanGame {
         }
     }
 
+    hideWinOverlay() {
+        if (this.winOverlay) {
+            this.winOverlay.style.display = 'none';
+            this.winOverlay.setAttribute('aria-hidden', 'true');
+        }
+    }
     toggleStudentInterface(showFull) {
         if (showFull) {
             this.gameInfoSection.style.display = '';
