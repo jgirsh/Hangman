@@ -10,6 +10,8 @@ class HangmanGame {
         this.gameName = '';
         this.gameStarted = false;
         this.currentWordIndex = 0;
+        this.activeWords = [];
+        this.correctWordsCount = 0;
         
         this.initializeElements();
         this.attachEventListeners();
@@ -28,6 +30,11 @@ class HangmanGame {
         this.saveWordsBtn = document.getElementById('saveWordsBtn');
         this.goToStudentBtn = document.getElementById('goToStudentBtn');
         this.saveStatus = document.getElementById('saveStatus');
+        // Win overlay elements
+        this.winOverlay = document.getElementById('winOverlay');
+        this.winScore = document.getElementById('winScore');
+        this.winSubtitle = document.getElementById('winSubtitle');
+        this.winNewGameBtn = document.getElementById('winNewGameBtn');
         // Win overlay elements
         this.winOverlay = document.getElementById('winOverlay');
         this.winScore = document.getElementById('winScore');
@@ -89,6 +96,10 @@ class HangmanGame {
             this.hideWinOverlay();
             this.startNewGame();
         });
+        this.winNewGameBtn && this.winNewGameBtn.addEventListener('click', () => {
+            this.hideWinOverlay();
+            this.startNewGame();
+        });
 
         // Resilient global delegation as a safety net
         document.addEventListener('click', (e) => {
@@ -120,8 +131,36 @@ class HangmanGame {
                 case 'backToTeacherBtn':
                     this.goToTeacherPage();
                     break;
+                case 'winNewGameBtn':
+                    this.hideWinOverlay();
+                    this.startNewGame();
+                    break;
             }
         });
+    }
+    
+    shuffleArray(array) {
+        // Use crypto-based RNG when available for better randomness
+        const randomInt = (maxExclusive) => {
+            if (window.crypto && window.crypto.getRandomValues) {
+                const buf = new Uint32Array(1);
+                window.crypto.getRandomValues(buf);
+                return Math.floor((buf[0] / (0xFFFFFFFF + 1)) * maxExclusive);
+            }
+            return Math.floor(Math.random() * maxExclusive);
+        };
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = randomInt(i + 1);
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        // Add a random rotation to further vary order on short lists
+        if (array.length > 1) {
+            const rotateBy = randomInt(array.length);
+            if (rotateBy > 0) {
+                const head = array.splice(0, rotateBy);
+                array.push(...head);
+            }
+        }
     }
     
     addWord() {
@@ -242,7 +281,9 @@ class HangmanGame {
         
         // Always reload latest saved words and game name at start
         this.loadSavedWords();
-        this.wordsLeftElement.textContent = this.words.length;
+        this.activeWords = this.words.slice();
+        this.shuffleArray(this.activeWords);
+        this.wordsLeftElement.textContent = this.activeWords.length;
         
         this.gameStarted = true;
         this.currentWordIndex = 0;
@@ -255,12 +296,12 @@ class HangmanGame {
     }
     
     nextWord() {
-        if (this.currentWordIndex >= this.words.length) {
+        if (this.currentWordIndex >= this.activeWords.length) {
             this.endGame();
             return;
         }
         
-        this.currentWord = this.words[this.currentWordIndex];
+        this.currentWord = this.activeWords[this.currentWordIndex];
         this.guessedLetters = [];
         this.incorrectLetters = [];
         this.wrongGuesses = 0;
@@ -346,7 +387,12 @@ class HangmanGame {
     }
     
     updateWordsLeft() {
-        this.wordsLeftElement.textContent = this.words.length - this.currentWordIndex;
+        if (this.gameStarted) {
+            const remaining = Math.max((this.activeWords.length || 0) - this.currentWordIndex, 0);
+            this.wordsLeftElement.textContent = remaining;
+        } else {
+            this.wordsLeftElement.textContent = this.words.length;
+        }
     }
     
     isWordComplete() {
@@ -365,7 +411,7 @@ class HangmanGame {
         const cheer = this.getRandomEncouragement();
         this.gameMessage.textContent = `Congratulations! You guessed the word "${this.currentWord.toUpperCase()}" and you got +10 points! ${cheer}`;
         // If this was the last word, end game instead of showing Next Word
-        if (this.currentWordIndex + 1 >= this.words.length) {
+        if (this.currentWordIndex + 1 >= this.activeWords.length) {
             this.currentWordIndex++;
             this.endGame();
         } else {
@@ -377,7 +423,7 @@ class HangmanGame {
     wordFailed() {
         this.gameMessage.textContent = `Game Over! The word was "${this.currentWord.toUpperCase()}".`;
         // If this was the last word, end game instead of showing Next Word
-        if (this.currentWordIndex + 1 >= this.words.length) {
+        if (this.currentWordIndex + 1 >= this.activeWords.length) {
             this.currentWordIndex++;
             this.endGame();
         } else {
@@ -387,7 +433,8 @@ class HangmanGame {
     }
     
     endGame() {
-        const allGuessed = this.words.length > 0 && (this.correctWordsCount || 0) === this.words.length;
+        const totalWords = (this.activeWords && this.activeWords.length) ? this.activeWords.length : this.words.length;
+        const allGuessed = totalWords > 0 && (this.correctWordsCount || 0) === totalWords;
         if (allGuessed && this.winOverlay && this.winScore) {
             const cheer = this.getRandomEncouragement();
             this.winScore.textContent = `Game Complete! Final Score: ${this.score} points`;
@@ -419,6 +466,7 @@ class HangmanGame {
         this.score = 0;
         this.currentWordIndex = 0;
         this.correctWordsCount = 0;
+        this.activeWords = [];
         
         this.wordDisplay.textContent = '';
         this.gameMessage.textContent = 'Click Start to play!';
@@ -443,8 +491,11 @@ class HangmanGame {
             if (!this.gameStarted) {
                 this.wordsLeftElement.textContent = this.words.length;
             } else {
-                // If mid-game, remaining words are total minus currentWordIndex
-                const remaining = Math.max(this.words.length - this.currentWordIndex, 0);
+                if (!this.activeWords || this.activeWords.length === 0) {
+                    this.activeWords = this.words.slice();
+                    this.shuffleArray(this.activeWords);
+                }
+                const remaining = Math.max(this.activeWords.length - this.currentWordIndex, 0);
                 this.wordsLeftElement.textContent = remaining;
             }
         }
@@ -454,6 +505,9 @@ class HangmanGame {
         if (this.winOverlay) {
             this.winOverlay.style.display = 'none';
             this.winOverlay.setAttribute('aria-hidden', 'true');
+            if (this.winSubtitle) {
+                this.winSubtitle.textContent = 'Great job!';
+            }
         }
     }
     toggleStudentInterface(showFull) {
