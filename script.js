@@ -12,9 +12,14 @@ class HangmanGame {
         this.currentWordIndex = 0;
         this.activeWords = [];
         this.correctWordsCount = 0;
+        this.currentHintUsed = false;
+        this.currentWordData = null;
         
         this.initializeElements();
         this.attachEventListeners();
+        this.loadSavedWords();
+        this.updateWordsList();
+        this.updateWordsLeft();
     }
     
     initializeElements() {
@@ -25,21 +30,20 @@ class HangmanGame {
         // Teacher page elements
         this.gameNameInput = document.getElementById('gameName');
         this.wordInput = document.getElementById('wordInput');
+        this.hintTextInput = document.getElementById('hintTextInput');
+        this.hintImageInput = document.getElementById('hintImageInput');
         this.addWordBtn = document.getElementById('addWordBtn');
         this.wordsList = document.getElementById('wordsList');
         this.saveWordsBtn = document.getElementById('saveWordsBtn');
         this.goToStudentBtn = document.getElementById('goToStudentBtn');
         this.saveStatus = document.getElementById('saveStatus');
+        this.clearWordsBtn = document.getElementById('clearWordsBtn');
         // Win overlay elements
         this.winOverlay = document.getElementById('winOverlay');
         this.winScore = document.getElementById('winScore');
         this.winSubtitle = document.getElementById('winSubtitle');
         this.winNewGameBtn = document.getElementById('winNewGameBtn');
-        // Win overlay elements
-        this.winOverlay = document.getElementById('winOverlay');
-        this.winScore = document.getElementById('winScore');
-        this.winSubtitle = document.getElementById('winSubtitle');
-        this.winNewGameBtn = document.getElementById('winNewGameBtn');
+        this.winResetBtn = document.getElementById('winResetBtn');
         
         // Student page elements
         this.studentGameTitle = document.getElementById('studentGameTitle');
@@ -50,6 +54,8 @@ class HangmanGame {
         this.incorrectLettersElement = document.getElementById('incorrectLetters');
         this.letterInput = document.getElementById('letterInput');
         this.guessBtn = document.getElementById('guessBtn');
+        this.showHintBtn = document.getElementById('showHintBtn');
+        this.hintDisplay = document.getElementById('hintDisplay');
         this.startGameBtn = document.getElementById('startGameBtn');
         this.nextWordBtn = document.getElementById('nextWordBtn');
         this.newGameBtn = document.getElementById('newGameBtn');
@@ -67,16 +73,123 @@ class HangmanGame {
         const savedWords = localStorage.getItem('hangmanWords');
         const savedGameName = localStorage.getItem('hangmanGameName');
         if (savedWords) {
-            this.words = JSON.parse(savedWords);
+            try {
+                const parsed = JSON.parse(savedWords);
+                this.words = this.normalizeWords(parsed);
+            } catch {
+                this.words = [];
+            }
         }
         if (savedGameName) {
             this.studentGameTitle.textContent = savedGameName;
+            if (this.gameNameInput) {
+                this.gameNameInput.value = savedGameName;
+            }
+        }
+    }
+
+    clearAllWords(options = {}) {
+        const { suppressConfirm = false } = options;
+        if (!suppressConfirm) {
+            const confirmed = confirm('Clear all saved words and hints?');
+            if (!confirmed) {
+                return;
+            }
+        }
+        this.words = [];
+        this.activeWords = [];
+        this.persistWordsToLocalStorage();
+        this.updateWordsList();
+        this.refreshWordsLeftFromStorage();
+        if (this.wordInput) this.wordInput.value = '';
+        this.resetHintInputs();
+        if (this.gameMessage) {
+            this.gameMessage.textContent = 'All words cleared. Add new words to play!';
+        }
+        this.clearHintDisplay();
+    }
+
+    normalizeWords(rawWords) {
+        if (!Array.isArray(rawWords)) return [];
+        return rawWords
+            .map((item) => {
+                if (typeof item === 'string') {
+                    const normalized = item.trim().toLowerCase();
+                    return normalized ? { word: normalized, hintText: '', hintImage: '' } : null;
+                }
+                if (item && typeof item === 'object') {
+                    const normalized = (item.word || '').trim().toLowerCase();
+                    if (!normalized) return null;
+                    return {
+                        word: normalized,
+                        hintText: item.hintText ? String(item.hintText) : '',
+                        hintImage: item.hintImage ? String(item.hintImage) : ''
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean);
+    }
+
+    persistWordsToLocalStorage() {
+        localStorage.setItem('hangmanWords', JSON.stringify(this.words));
+    }
+
+    readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    resetHintInputs() {
+        if (this.hintTextInput) this.hintTextInput.value = '';
+        if (this.hintImageInput) this.hintImageInput.value = '';
+    }
+
+    clearHintDisplay() {
+        if (this.hintDisplay) {
+            this.hintDisplay.innerHTML = '';
+            this.hintDisplay.classList.remove('has-hint');
+            this.hintDisplay.textContent = 'No hint available.';
+        }
+    }
+
+    updateHintUI() {
+        if (!this.showHintBtn) return;
+        this.clearHintDisplay();
+        const hasHint = this.currentWordData && (this.currentWordData.hintText || this.currentWordData.hintImage);
+        if (hasHint) {
+            this.showHintBtn.style.display = 'block';
+            this.showHintBtn.disabled = false;
+            this.showHintBtn.textContent = 'Show Hint';
+            if (this.hintDisplay) {
+                this.hintDisplay.textContent = 'Hint hidden until you click Show Hint.';
+            }
+        } else {
+            this.showHintBtn.style.display = 'none';
+            if (this.hintDisplay) {
+                this.hintDisplay.textContent = 'No hint available.';
+            }
         }
     }
     
     attachEventListeners() {
         // Teacher page events
-        this.addWordBtn && this.addWordBtn.addEventListener('click', (e) => { e.preventDefault(); this.addWord(); });
+        this.addWordBtn && this.addWordBtn.addEventListener('click', (e) => { 
+            e.preventDefault(); 
+            e.stopPropagation();
+            this.addWord(); 
+        });
+        this.wordInput.addEventListener('input', () => {
+            if (!this.wordInput) return;
+            const sanitized = this.wordInput.value.replace(/\s+/g, '');
+            if (sanitized !== this.wordInput.value) {
+                this.wordInput.value = sanitized;
+            }
+        });
         this.wordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.addWord();
         });
@@ -86,19 +199,30 @@ class HangmanGame {
         // Student page events
         this.startGameBtn && this.startGameBtn.addEventListener('click', () => this.startGame());
         this.guessBtn && this.guessBtn.addEventListener('click', () => this.makeGuess());
+        this.showHintBtn && this.showHintBtn.addEventListener('click', () => this.showHint());
         this.letterInput && this.letterInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.makeGuess();
         });
         this.nextWordBtn && this.nextWordBtn.addEventListener('click', () => this.nextWord());
         this.newGameBtn && this.newGameBtn.addEventListener('click', () => this.startNewGame());
         this.backToTeacherBtn && this.backToTeacherBtn.addEventListener('click', () => this.goToTeacherPage());
-        this.winNewGameBtn && this.winNewGameBtn.addEventListener('click', () => {
+        this.clearWordsBtn && this.clearWordsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.clearAllWords();
+        });
+        this.winNewGameBtn && this.winNewGameBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             this.hideWinOverlay();
             this.startNewGame();
         });
-        this.winNewGameBtn && this.winNewGameBtn.addEventListener('click', () => {
+        this.winResetBtn && this.winResetBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             this.hideWinOverlay();
-            this.startNewGame();
+            this.clearAllWords({ suppressConfirm: true });
+            this.goToTeacherPage();
         });
 
         // Resilient global delegation as a safety net
@@ -131,9 +255,20 @@ class HangmanGame {
                 case 'backToTeacherBtn':
                     this.goToTeacherPage();
                     break;
+                case 'showHintBtn':
+                    this.showHint();
+                    break;
                 case 'winNewGameBtn':
                     this.hideWinOverlay();
                     this.startNewGame();
+                    break;
+                case 'winResetBtn':
+                    this.hideWinOverlay();
+                    this.clearAllWords({ suppressConfirm: true });
+                    this.goToTeacherPage();
+                    break;
+                case 'clearWordsBtn':
+                    this.clearAllWords();
                     break;
             }
         });
@@ -163,15 +298,43 @@ class HangmanGame {
         }
     }
     
-    addWord() {
-        const word = this.wordInput.value.trim().toLowerCase();
-        if (word && !this.words.includes(word)) {
-            this.words.push(word);
-            this.updateWordsList();
-            // Persist immediately so state is not lost
-            localStorage.setItem('hangmanWords', JSON.stringify(this.words));
-            this.wordInput.value = '';
+    async addWord() {
+        if (!this.wordInput) return;
+        const rawInput = this.wordInput.value;
+        const word = rawInput.trim().toLowerCase();
+        if (!word) return;
+        if (/\s/.test(word)) {
+            alert('Please enter a single word without spaces.');
+            return;
         }
+
+        if (this.words.some((item) => item.word === word)) {
+            alert('This word has already been added.');
+            return;
+        }
+
+        const hintText = this.hintTextInput ? this.hintTextInput.value.trim() : '';
+        let hintImage = '';
+        const hintFile = this.hintImageInput && this.hintImageInput.files ? this.hintImageInput.files[0] : null;
+        if (hintFile) {
+            try {
+                hintImage = await this.readFileAsDataURL(hintFile);
+            } catch (error) {
+                console.error('Failed to read hint image:', error);
+                alert('Unable to load the hint image. Please try a different file.');
+            }
+        }
+
+        this.words.push({
+            word,
+            hintText,
+            hintImage
+        });
+        this.updateWordsList();
+        this.persistWordsToLocalStorage();
+        this.wordInput.value = '';
+        this.resetHintInputs();
+        this.refreshWordsLeftFromStorage();
     }
     
     getRandomEncouragement() {
@@ -192,11 +355,20 @@ class HangmanGame {
     }
     
     updateWordsList() {
+        if (!this.wordsList) return;
         this.wordsList.innerHTML = '';
-        this.words.forEach((word, index) => {
+        this.words.forEach((wordEntry, index) => {
             const li = document.createElement('li');
+            const hintBadges = [];
+            if (wordEntry.hintText) {
+                hintBadges.push('<span class="hint-badge">Text Hint</span>');
+            }
+            if (wordEntry.hintImage) {
+                hintBadges.push('<span class="hint-badge image">Image</span>');
+            }
             li.innerHTML = `
-                ${word.toUpperCase()}
+                <span class="word-label">${wordEntry.word.toUpperCase()}</span>
+                ${hintBadges.join(' ')}
                 <button class="remove-word" data-index="${index}">×</button>
             `;
             this.wordsList.appendChild(li);
@@ -211,10 +383,11 @@ class HangmanGame {
     }
     
     removeWord(index) {
+        if (index < 0 || index >= this.words.length) return;
         this.words.splice(index, 1);
         this.updateWordsList();
         // Persist removal and update words left if on student page
-        localStorage.setItem('hangmanWords', JSON.stringify(this.words));
+        this.persistWordsToLocalStorage();
         this.refreshWordsLeftFromStorage();
     }
     
@@ -228,7 +401,7 @@ class HangmanGame {
         this.studentGameTitle.textContent = this.gameName;
         
         // Store words in localStorage
-        localStorage.setItem('hangmanWords', JSON.stringify(this.words));
+        this.persistWordsToLocalStorage();
         localStorage.setItem('hangmanGameName', this.gameName);
         
         this.showSaveStatus(`${this.words.length} word(s) saved. Switch to Student to play!`);
@@ -259,9 +432,13 @@ class HangmanGame {
         
         // Load saved words and game name
         this.loadSavedWords();
+        this.updateWordsList();
         
         this.wordsLeftElement.textContent = this.words.length;
         this.gameMessage.textContent = 'Click Start to play!';
+        this.currentHintUsed = false;
+        this.currentWordData = null;
+        this.updateHintUI();
         
         // Before game starts, show only title and Start button
         this.toggleStudentInterface(false);
@@ -281,7 +458,8 @@ class HangmanGame {
         
         // Always reload latest saved words and game name at start
         this.loadSavedWords();
-        this.activeWords = this.words.slice();
+        this.updateWordsList();
+        this.activeWords = this.words.map(item => ({ ...item }));
         this.shuffleArray(this.activeWords);
         this.wordsLeftElement.textContent = this.activeWords.length;
         
@@ -289,9 +467,18 @@ class HangmanGame {
         this.currentWordIndex = 0;
         this.score = 0;
         this.correctWordsCount = 0;
+        this.currentHintUsed = false;
+        this.currentWordData = null;
         this.scoreElement.textContent = this.score;
         this.startGameBtn.style.display = 'none';
         this.toggleStudentInterface(true);
+        this.updateHintUI();
+        this.wordDisplay.textContent = '';
+        this.gameMessage.textContent = '';
+        this.incorrectLetters = [];
+        this.incorrectLettersElement.textContent = '';
+        if (this.letterInput) this.letterInput.value = '';
+        this.resetHangman();
         this.nextWord();
     }
     
@@ -301,15 +488,22 @@ class HangmanGame {
             return;
         }
         
-        this.currentWord = this.activeWords[this.currentWordIndex];
+        this.currentWordData = this.activeWords[this.currentWordIndex];
+        this.currentWord = this.currentWordData.word;
+        if (!this.currentWord) {
+            this.endGame();
+            return;
+        }
         this.guessedLetters = [];
         this.incorrectLetters = [];
         this.wrongGuesses = 0;
+        this.currentHintUsed = false;
         
         this.updateWordDisplay();
         this.updateIncorrectLetters();
         this.resetHangman();
         this.updateWordsLeft();
+        this.updateHintUI();
         
         this.nextWordBtn.style.display = 'none';
         this.newGameBtn.style.display = 'none';
@@ -317,10 +511,11 @@ class HangmanGame {
     }
     
     makeGuess() {
-        if (!this.gameStarted) return;
+        if (!this.gameStarted || !this.letterInput) return;
         
         const letter = this.letterInput.value.toLowerCase().trim();
         this.letterInput.value = '';
+        if (!this.currentWord) return;
         
         // Only show alert if the user entered multiple characters.
         // Ignore empty submissions silently.
@@ -366,6 +561,43 @@ class HangmanGame {
     updateIncorrectLetters() {
         this.incorrectLettersElement.textContent = this.incorrectLetters.join(' ');
     }
+
+    showHint() {
+        if (!this.showHintBtn || !this.hintDisplay || !this.currentWordData) return;
+        const { hintText, hintImage } = this.currentWordData;
+        if (!hintText && !hintImage) return;
+
+        this.currentHintUsed = true;
+        this.hintDisplay.innerHTML = '';
+        const header = document.createElement('div');
+        header.classList.add('hint-header');
+        header.textContent = 'HINT:';
+        this.hintDisplay.appendChild(header);
+
+        if (hintText) {
+            const textEl = document.createElement('p');
+            textEl.textContent = hintText;
+            this.hintDisplay.appendChild(textEl);
+        }
+
+        if (hintImage) {
+            const imgEl = document.createElement('img');
+            imgEl.src = hintImage;
+            imgEl.alt = 'Hint image';
+            this.hintDisplay.appendChild(imgEl);
+        }
+
+        if (!hintText && hintImage) {
+            const caption = document.createElement('p');
+            caption.textContent = 'Hint image';
+            this.hintDisplay.appendChild(caption);
+        }
+
+        this.hintDisplay.classList.add('has-hint');
+
+        this.showHintBtn.disabled = true;
+        this.showHintBtn.textContent = 'Hint Shown';
+    }
     
     updateHangman() {
         if (this.wrongGuesses > 0 && this.wrongGuesses <= this.hangmanParts.length) {
@@ -405,11 +637,12 @@ class HangmanGame {
     }
     
     wordGuessed() {
-        this.score += 10;
+        const pointsEarned = this.currentHintUsed ? 5 : 10;
+        this.score += pointsEarned;
         this.correctWordsCount = (this.correctWordsCount || 0) + 1;
         this.scoreElement.textContent = this.score;
         const cheer = this.getRandomEncouragement();
-        this.gameMessage.textContent = `Congratulations! You guessed the word "${this.currentWord.toUpperCase()}" and you got +10 points! ${cheer}`;
+        this.gameMessage.textContent = `Congratulations! You guessed the word "${this.currentWord.toUpperCase()}" and you got +${pointsEarned} points! ${cheer}`;
         // If this was the last word, end game instead of showing Next Word
         if (this.currentWordIndex + 1 >= this.activeWords.length) {
             this.currentWordIndex++;
@@ -441,12 +674,15 @@ class HangmanGame {
             if (this.winSubtitle) this.winSubtitle.textContent = cheer;
             this.winOverlay.style.display = 'flex';
             this.winOverlay.setAttribute('aria-hidden', 'false');
+            if (this.winNewGameBtn) this.winNewGameBtn.textContent = 'Replay Game';
+            if (this.winResetBtn) this.winResetBtn.style.display = '';
             // Hide in-page final controls when using overlay
             this.newGameBtn.style.display = 'none';
             this.nextWordBtn.style.display = 'none';
         } else {
             const cheer = this.getRandomEncouragement();
             this.gameMessage.innerHTML = `<span class="final-message">Game Complete! Final Score: ${this.score} points — ${cheer}</span>`;
+            if (this.newGameBtn) this.newGameBtn.textContent = 'Replay Game';
             this.newGameBtn.style.display = 'inline-block';
             this.nextWordBtn.style.display = 'none';
         }
@@ -467,6 +703,8 @@ class HangmanGame {
         this.currentWordIndex = 0;
         this.correctWordsCount = 0;
         this.activeWords = [];
+        this.currentHintUsed = false;
+        this.currentWordData = null;
         
         this.wordDisplay.textContent = '';
         this.gameMessage.textContent = 'Click Start to play!';
@@ -480,19 +718,25 @@ class HangmanGame {
         
         this.resetHangman();
         this.hideWinOverlay();
+        this.updateHintUI();
     }
 
     refreshWordsLeftFromStorage() {
         // Keep student page words left in sync with saved words
         const savedWords = localStorage.getItem('hangmanWords');
         if (savedWords) {
-            const savedList = JSON.parse(savedWords);
-            this.words = savedList;
+            try {
+                const savedList = JSON.parse(savedWords);
+                this.words = this.normalizeWords(savedList);
+                this.updateWordsList();
+            } catch {
+                this.words = [];
+            }
             if (!this.gameStarted) {
                 this.wordsLeftElement.textContent = this.words.length;
             } else {
                 if (!this.activeWords || this.activeWords.length === 0) {
-                    this.activeWords = this.words.slice();
+                    this.activeWords = this.words.map(item => ({ ...item }));
                     this.shuffleArray(this.activeWords);
                 }
                 const remaining = Math.max(this.activeWords.length - this.currentWordIndex, 0);
@@ -511,18 +755,20 @@ class HangmanGame {
         }
     }
     toggleStudentInterface(showFull) {
-        if (showFull) {
-            this.gameInfoSection.style.display = '';
-            this.gameAreaSection.style.display = '';
-            this.guessSection.style.display = '';
-            this.backToTeacherBtn.style.display = '';
-        } else {
-            this.gameInfoSection.style.display = 'none';
-            this.gameAreaSection.style.display = 'none';
-            this.guessSection.style.display = 'none';
-            // Show Start button; hide Back to Teacher to match requested minimal view
-            this.startGameBtn.style.display = 'inline-block';
-            this.backToTeacherBtn.style.display = 'none';
+        const displayValue = showFull ? '' : 'none';
+        if (this.gameInfoSection) this.gameInfoSection.style.display = displayValue;
+        if (this.gameAreaSection) this.gameAreaSection.style.display = displayValue;
+        if (this.guessSection) this.guessSection.style.display = displayValue;
+
+        if (this.backToTeacherBtn) {
+            this.backToTeacherBtn.style.display = showFull ? '' : 'none';
+        }
+
+        if (!showFull) {
+            if (this.startGameBtn) this.startGameBtn.style.display = 'inline-block';
+            this.currentHintUsed = false;
+            this.currentWordData = null;
+            this.updateHintUI();
         }
     }
 }
