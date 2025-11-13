@@ -20,8 +20,17 @@
             <h2>Teacher: Manage Spelling Words</h2>
             
             <div class="word-input-section">
-                <input type="text" id="wordInput" placeholder="Enter a spelling word...">
-                <button id="addWordBtn" type="button">Add Word</button>
+                <div class="word-input-row">
+                    <input type="text" id="wordInput" placeholder="Enter a spelling word...">
+                    <button id="addWordBtn" type="button">Add Word</button>
+                </div>
+                <div class="hint-input-row">
+                    <input type="text" id="hintTextInput" placeholder="Optional hint text...">
+                    <label for="hintImageInput" class="hint-image-upload">
+                        <input type="file" id="hintImageInput" accept="image/*">
+                        <span>Add Hint Image</span>
+                    </label>
+                </div>
             </div>
             
             <div class="words-list">
@@ -32,6 +41,7 @@
             <div class="actions">
                 <button id="saveWordsBtn" type="button">Save Words</button>
                 <button id="goToStudentBtn" type="button">Go to Student Page</button>
+                <button id="clearWordsBtn" type="button" class="danger-btn">Clear All Words</button>
             </div>
             <div id="saveStatus" class="save-status" aria-live="polite"></div>
         </div>
@@ -68,20 +78,24 @@
                     <div id="wordDisplay"></div>
                     <div id="gameMessage"></div>
                     <button id="nextWordBtn" class="next-word-btn" style="display: none;">Next Word</button>
-                    <button id="newGameBtn" class="new-game-btn" style="display: none;">Start New Game</button>
+                    <button id="newGameBtn" class="new-game-btn" style="display: none;">Replay Game</button>
                 </div>
             </div>
             
             <div class="guess-section">
-                <div class="incorrect-letters">
-                    <h3>Incorrect Letters:</h3>
-                    <div id="incorrectLetters"></div>
+                <div class="guess-column">
+                    <div class="incorrect-letters">
+                        <h3>Incorrect Letters:</h3>
+                        <div id="incorrectLetters"></div>
+                    </div>
+                    
+                    <div class="guess-input">
+                        <input type="text" id="letterInput" maxlength="1" placeholder="Enter a letter...">
+                        <button id="guessBtn">Guess Letter</button>
+                    </div>
+                    <button id="showHintBtn" class="hint-btn" style="display: none;">Show Hint</button>
                 </div>
-                
-                <div class="guess-input">
-                    <input type="text" id="letterInput" maxlength="1" placeholder="Enter a letter...">
-                    <button id="guessBtn">Guess Letter</button>
-                </div>
+                <div id="hintDisplay" class="hint-display"></div>
             </div>
             
             <div class="actions">
@@ -101,7 +115,10 @@
             <h2 class="win-title">You Win!</h2>
             <p id="winSubtitle" class="win-subtitle">Great job!</p>
             <div id="winScore" class="win-score">Game Complete! Final Score: 0 points</div>
-            <button id="winNewGameBtn" class="new-game-btn">Start New Game</button>
+            <div class="win-actions">
+                <button id="winNewGameBtn" class="new-game-btn">Replay Game</button>
+                <button id="winResetBtn" class="new-game-btn danger">Start New Game</button>
+            </div>
         </div>
     </div>
 
